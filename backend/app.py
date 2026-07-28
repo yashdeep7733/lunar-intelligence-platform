@@ -1,12 +1,10 @@
-import io
+from unittest import result
+
 from flask import Flask, jsonify, request
 import numpy as np
 import cv2
 import base64
 from flask_cors import CORS
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 from ultralytics import YOLO
 import math
 import time
@@ -32,7 +30,7 @@ def detecting_craters():
 
     np_image = np.frombuffer(image_bytes, np.uint8) # Converting bytes to a numpy array
     cv_image = cv2.imdecode(np_image, cv2.IMREAD_COLOR) # Decoding the numpy array to an OpenCV image
-    height, width = cv_image.shape[:2]
+    image_height, image_width = cv_image.shape[:2]
 
     # now we have (height, width, channels) in cv_image
 
@@ -64,23 +62,6 @@ def detecting_craters():
     math.ceil(np.median(crater_diameters))
     if crater_diameters else 0)
 
-    # Plotting the histogram of crater diameters using matplotlib to visualize the distribution of detected crater sizes. 
-    # And return to React frontend to display the histogram of crater diameters.
-    plt.figure(figsize=(8, 5))
-    plt.hist(crater_diameters, bins=20, color='blue', edgecolor='black') # Creating a histogram with 20 bins, blue color, and black edges for the bars
-    plt.xlabel('Crater Diameter')
-    plt.ylabel('Frequency')
-    plt.title('Distribution of Crater Diameters')
-    # plt.savefig('./Example_histogram/crater_diameter_histogram.png') # Saving the histogram as an image file
-    # Save plot to memory buffer instead of file
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight')
-    plt.close()
-    buf.seek(0)
-    # Encode to base64
-    histogram_base64 = base64.b64encode(buf.read()).decode("utf-8")
-    buf.close()
-
     hazard_score = min(len(result.boxes) * 2, 100)
 
     if hazard_score < 30:
@@ -97,6 +78,41 @@ def detecting_craters():
     f"The overall hazard level is {hazard_level}."
     )
 
+    craters = []
+
+    for i, box in enumerate(result.boxes):
+        x1, y1, x2, y2 = box.xyxy[0]
+
+        width = float(x2 - x1)
+        height = float(y2 - y1)
+
+        diameter = (width + height) / 2
+
+        craters.append({
+            "id": i + 1,
+            "x": int((x1 + x2) / 2),
+            "y": int((y1 + y2) / 2),
+            "diameter": round(diameter, 2),
+            "confidence": round(float(box.conf[0]), 2)
+        })
+
+    confidences = []
+
+    for i, box in enumerate(result.boxes):
+        confidence = round(float(box.conf[0]), 2)
+        confidences.append(confidence)
+
+    small = 0
+    medium = 0
+    large = 0
+    for d in crater_diameters:
+        if d < 60:
+            small += 1
+        elif d < 120:
+            medium += 1
+        else:
+            large += 1
+
     return jsonify({
 
     "success": True,
@@ -107,13 +123,22 @@ def detecting_craters():
         "planet": "Moon",
         "model": "YOLO11",
         "processing_time": f"{processing_time} sec",
-        "image_resolution": f"{width}x{height}",
-        "analysis_date": datetime.utcnow().isoformat()
+        "analysis_date": datetime.now().isoformat()
     },
+
+    "image_resolution": {
+    "width": image_width,
+    "height": image_height
+    },
+
+    "craters": craters,
 
     "images": {
         "annotated": base64_image_annotated,
-        "crater_size_distribution": histogram_base64
+    },
+
+    "chart_data": {
+    "diameters": [math.ceil(x) for x in crater_diameters]
     },
 
     "statistics": {
@@ -127,6 +152,19 @@ def detecting_craters():
     "hazard": {
         "score": hazard_score,
         "level": hazard_level
+    },
+
+    "size_distribution": {
+    "small": small,
+    "medium": medium,
+    "large": large
+    },
+
+    "confidence": {
+    "average": round(sum(confidences)/len(confidences), 2) if confidences else 0,
+    "highest": max(confidences) if confidences else 0,
+    "lowest": min(confidences) if confidences else 0,
+    "values": confidences
     },
 
     "explainable_ai": {
