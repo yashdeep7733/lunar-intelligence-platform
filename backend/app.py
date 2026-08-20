@@ -58,8 +58,8 @@ def detecting_craters():
         crater_diameters.append(estimated_diameter) # Appending the average size to the list
 
     median_diameter = (
-    math.ceil(np.median(crater_diameters))
-    if crater_diameters else 0)
+    math.ceil(np.median(crater_diameters)) # ceiling the median size of the detected bounding boxes to the nearest integer
+    if crater_diameters else 0) # Calculating the median size of the detected bounding boxes. If no bounding boxes are detected, the median size is set to 0.
 
     hazard_score = min(len(result.boxes) * 2, 100)
 
