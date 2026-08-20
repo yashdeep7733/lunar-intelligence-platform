@@ -4,7 +4,7 @@
 // the existing backend.
 // ========================================
 const API_CONFIG = {
-    baseURL: "", // e.g. "https://api.lunar-landing.org"
+    baseURL: "http://192.168.31.253:6600", // e.g. "https://api.lunar-landing.org"
     endpoints: {
         login: "/api/auth/login",
         analyze: "/api/analyze"
