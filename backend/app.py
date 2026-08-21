@@ -119,7 +119,6 @@ def detecting_craters():
     "analysis_id": analysis_id,
 
     "processing_info": {
-        "planet": "Moon",
         "model": "YOLO11",
         "processing_time": f"{processing_time} sec",
         "analysis_date": datetime.now().isoformat()

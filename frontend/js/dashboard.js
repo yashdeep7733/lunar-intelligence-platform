@@ -82,7 +82,6 @@ function renderDashboard(data) {
 
     // 7. Processing Information Panel
     document.getElementById("tech-id").textContent = data.analysis_id;
-    document.getElementById("tech-planet").textContent = data.processing_info.planet;
     document.getElementById("tech-model").textContent = data.processing_info.model;
     document.getElementById("tech-time").textContent = data.processing_info.processing_time;
     document.getElementById("tech-date").textContent = new Date(data.processing_info.analysis_date).toLocaleString();
