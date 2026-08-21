@@ -12,6 +12,14 @@ function renderDashboard(data) {
 
     currentDashboardData = data;
 
+    // Persist state to session storage to survive tab switching / focus changes
+    try {
+        sessionStorage.setItem("lunar_active_dashboard", JSON.stringify(data));
+        sessionStorage.setItem("lunar_active_view", "dashboard-view");
+    } catch (e) {
+        console.warn("Session storage unavailable", e);
+    }
+
     // 1. Header Telemetry
     document.getElementById("header-analysis-id").textContent = data.analysis_id;
     document.getElementById("header-planet").textContent = data.processing_info.planet || "Moon";
@@ -25,14 +33,17 @@ function renderDashboard(data) {
     document.getElementById("kpi-avg-crater").textContent = stats.average_crater_px ?? 0;
     document.getElementById("kpi-median-crater").textContent = stats.median_crater_px ?? 0;
 
-    // 3. AI Annotated Image (Robust Rendering Fix)
+    // 3. AI Annotated Image (Robust Multi-Format Rendering Fix)
     const annotatedImg = document.getElementById("annotated-image-output");
     if (data.images && data.images.annotated) {
         const imgVal = data.images.annotated;
-        if (imgVal.startsWith("data:") || imgVal.startsWith("http")) {
-            annotatedImg.src = imgVal;
-        } else {
-            annotatedImg.src = `data:image/png;base64,${imgVal}`;
+        if (typeof imgVal === 'string') {
+            if (imgVal.startsWith("data:") || imgVal.startsWith("http") || imgVal.startsWith("blob:")) {
+                annotatedImg.src = imgVal;
+            } else {
+                // Handle raw backend base64 string
+                annotatedImg.src = `data:image/jpeg;base64,${imgVal}`;
+            }
         }
     }
 
@@ -43,7 +54,7 @@ function renderDashboard(data) {
     // 4. Hazard Assessment Gauge
     const hazard = data.hazard || { score: 0, level: "Safe" };
     document.getElementById("hazard-score-val").textContent = hazard.score;
-    
+
     const gaugeCircle = document.getElementById("gauge-progress-circle");
     const strokeOffset = 314 - (314 * hazard.score) / 100;
     gaugeCircle.style.strokeDashoffset = strokeOffset;
@@ -64,9 +75,9 @@ function renderDashboard(data) {
     document.getElementById("conf-low").textContent = `${Math.round((conf.lowest || 0) * 100)}%`;
 
     // 6. Explainable AI Summary
-    const xaiSummary = data.explainable_ai && data.explainable_ai.summary 
-        ? data.explainable_ai.summary 
-        : "No AI explanation available for this run.";
+    const xaiSummary = data.explainable_ai && data.explainable_ai.summary
+    ? data.explainable_ai.summary
+    : "No AI explanation available for this run.";
     document.getElementById("xai-summary-text").textContent = xaiSummary;
 
     // 7. Processing Information Panel
@@ -81,7 +92,7 @@ function renderDashboard(data) {
     // 8. Dynamic Crater Table
     renderCraterTable(data.craters || []);
 
-    // 9. Render Charts (Histogram & Donut & Confidence)
+    // 9. Render Charts
     renderCharts(data);
 }
 
@@ -110,7 +121,7 @@ function renderCraterTable(craters) {
 }
 
 // ========================================
-// REPORT DOWNLOAD EXPORT FUNCTIONS
+// REPORT DOWNLOAD EXPORT FUNCTIONS (Corruption Fixed)
 // ========================================
 
 function exportReport(format) {
@@ -121,40 +132,36 @@ function exportReport(format) {
 
     const reportId = currentDashboardData.analysis_id;
     let fileContent = "";
-    let mimeType = "";
-    let extension = format;
+    let mimeType = "text/plain;charset=utf-8";
+    let extension = format === 'json' ? 'json' : 'txt'; // Use .txt/.json to prevent file corruption from raw text blobs
 
     if (format === 'json') {
         fileContent = JSON.stringify(currentDashboardData, null, 2);
-        mimeType = "application/json";
     } else {
-        // Formats: pdf, docx, pptx formatted textual simulation for download blob
         fileContent = `==================================================\n` +
-                      ` LUNAR LANDING SITE DETECTION SYSTEM REPORT\n` +
-                      ` Format: ${format.toUpperCase()} | ID: ${reportId}\n` +
-                      `==================================================\n\n` +
-                      `1. PROCESSING TELEMETRY\n` +
-                      ` - Planet: ${currentDashboardData.processing_info.planet}\n` +
-                      ` - Model: ${currentDashboardData.processing_info.model}\n` +
-                      ` - Processing Time: ${currentDashboardData.processing_info.processing_time}\n` +
-                      ` - Analysis Date: ${currentDashboardData.processing_info.analysis_date}\n` +
-                      ` - Resolution: ${currentDashboardData.image_resolution.width}x${currentDashboardData.image_resolution.height}\n\n` +
-                      `2. MISSION STATISTICS\n` +
-                      ` - Total Craters: ${currentDashboardData.statistics.total_craters}\n` +
-                      ` - Largest Crater: ${currentDashboardData.statistics.largest_crater_px} px\n` +
-                      ` - Smallest Crater: ${currentDashboardData.statistics.smallest_crater_px} px\n` +
-                      ` - Average Crater: ${currentDashboardData.statistics.average_crater_px} px\n` +
-                      ` - Median Crater: ${currentDashboardData.statistics.median_crater_px} px\n\n` +
-                      `3. HAZARD ASSESSMENT\n` +
-                      ` - Hazard Score: ${currentDashboardData.hazard.score}/100\n` +
-                      ` - Hazard Level: ${currentDashboardData.hazard.level}\n\n` +
-                      `4. EXPLAINABLE AI SUMMARY\n` +
-                      ` ${currentDashboardData.explainable_ai.summary}\n\n` +
-                      `==================================================\n` +
-                      ` End of Report - LLSDS Autonomous Workstation\n` +
-                      `==================================================\n`;
-        
-        mimeType = format === 'pdf' ? "application/pdf" : (format === 'docx' ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+        ` LUNAR LANDING SITE DETECTION SYSTEM REPORT\n` +
+        ` Export Format: ${format.toUpperCase()} | ID: ${reportId}\n` +
+        `==================================================\n\n` +
+        `1. PROCESSING TELEMETRY\n` +
+        ` - Planet: ${currentDashboardData.processing_info.planet}\n` +
+        ` - Model: ${currentDashboardData.processing_info.model}\n` +
+        ` - Processing Time: ${currentDashboardData.processing_info.processing_time}\n` +
+        ` - Analysis Date: ${currentDashboardData.processing_info.analysis_date}\n` +
+        ` - Resolution: ${currentDashboardData.image_resolution.width}x${currentDashboardData.image_resolution.height}\n\n` +
+        `2. MISSION STATISTICS\n` +
+        ` - Total Craters: ${currentDashboardData.statistics.total_craters}\n` +
+        ` - Largest Crater: ${currentDashboardData.statistics.largest_crater_px} px\n` +
+        ` - Smallest Crater: ${currentDashboardData.statistics.smallest_crater_px} px\n` +
+        ` - Average Crater: ${currentDashboardData.statistics.average_crater_px} px\n` +
+        ` - Median Crater: ${currentDashboardData.statistics.median_crater_px} px\n\n` +
+        `3. HAZARD ASSESSMENT\n` +
+        ` - Hazard Score: ${currentDashboardData.hazard.score}/100\n` +
+        ` - Hazard Level: ${currentDashboardData.hazard.level}\n\n` +
+        `4. EXPLAINABLE AI SUMMARY\n` +
+        ` ${currentDashboardData.explainable_ai.summary}\n\n` +
+        `==================================================\n` +
+        ` End of Report - LLSDS Autonomous Workstation\n` +
+        `==================================================\n`;
     }
 
     const blob = new Blob([fileContent], { type: mimeType });

@@ -4,6 +4,7 @@
 
 document.addEventListener("DOMContentLoaded", () => {
     initApp();
+    restoreSessionState();
 });
 
 function initApp() {
@@ -12,6 +13,7 @@ function initApp() {
 
     // 2. Navigation Actions
     document.getElementById("new-analysis-btn").addEventListener("click", () => {
+        clearSessionState();
         switchViewState("upload-view");
     });
 
@@ -77,7 +79,7 @@ function initApp() {
 
 /**
  * Manages SPA view state transitions
- * @param {string} viewId 
+ * @param {string} viewId
  */
 function switchViewState(viewId) {
     document.querySelectorAll(".view").forEach(view => {
@@ -88,11 +90,40 @@ function switchViewState(viewId) {
         target.classList.add("active");
         window.scrollTo(0, 0);
 
+        try {
+            sessionStorage.setItem("lunar_active_view", viewId);
+        } catch (e) {}
+
         // If switching to dashboard view, trigger resize redraw for charts
         if (viewId === "dashboard-view" && currentDashboardData) {
             renderCharts(currentDashboardData);
         }
     }
+}
+
+/**
+ * Restores dashboard session state upon tab switching or page reload
+ */
+function restoreSessionState() {
+    try {
+        const savedView = sessionStorage.getItem("lunar_active_view");
+        const savedData = sessionStorage.getItem("lunar_active_dashboard");
+
+        if (savedView === "dashboard-view" && savedData) {
+            const parsedData = JSON.parse(savedData);
+            renderDashboard(parsedData);
+            switchViewState("dashboard-view");
+        }
+    } catch (e) {
+        console.warn("Could not restore session state", e);
+    }
+}
+
+function clearSessionState() {
+    try {
+        sessionStorage.removeItem("lunar_active_dashboard");
+        sessionStorage.removeItem("lunar_active_view");
+    } catch (e) {}
 }
 
 /**
@@ -112,18 +143,17 @@ function renderPublicHistory() {
     tbody.innerHTML = analysisHistory.map((item, idx) => {
         const dateStr = new Date(item.processing_info.analysis_date).toLocaleString();
         return `
-            <tr>
-                <td class="mono">${item.analysis_id}</td>
-                <td>${dateStr}</td>
-                <td><span class="badge">${item.processing_info.model}</span></td>
-                <td><strong>${item.statistics.total_craters}</strong> objects</td>
-                <td><span class="hazard-level-badge ${item.hazard.score < 30 ? 'level-safe' : (item.hazard.score < 70 ? 'level-moderate' : 'level-high')}">${item.hazard.level}</span></td>
-                <td><button type="button" class="btn btn-sm btn-secondary view-history-item" data-index="${idx}">View Dashboard</button></td>
-            </tr>
+        <tr>
+        <td class="mono">${item.analysis_id}</td>
+        <td>${dateStr}</td>
+        <td><span class="badge">${item.processing_info.model}</span></td>
+        <td><strong>${item.statistics.total_craters}</strong> objects</td>
+        <td><span class="hazard-level-badge ${item.hazard.score < 30 ? 'level-safe' : (item.hazard.score < 70 ? 'level-moderate' : 'level-high')}">${item.hazard.level}</span></td>
+        <td><button type="button" class="btn btn-sm btn-secondary view-history-item" data-index="${idx}">View Dashboard</button></td>
+        </tr>
         `;
     }).join("");
 
-    // Attach click listeners to loaded history items
     tbody.querySelectorAll(".view-history-item").forEach(btn => {
         btn.addEventListener("click", (e) => {
             const index = parseInt(e.target.getAttribute("data-index"), 10);
@@ -142,9 +172,9 @@ function renderPublicHistory() {
 function startProcessingAnimation() {
     const fill = document.getElementById("progress-bar-fill");
     const statusText = document.getElementById("processing-status-text");
-    
+
     fill.style.width = "0%";
-    
+
     const steps = [
         { progress: "25%", text: "Ingesting lunar surface raster telemetry..." },
         { progress: "55%", text: "Executing YOLO11 multi-scale crater bounding boxes..." },
