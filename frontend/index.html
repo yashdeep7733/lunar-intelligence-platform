@@ -5,42 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lunar Landing Site Detection System</title>
     <link rel="stylesheet" href="css/style.css">
-    <!-- Google Fonts for Aerospace/Mission Control aesthetics -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body class="space-theme">
 
-    <!-- ================= 1. LOGIN STATE ================= -->
-    <section id="login-view" class="view active">
-        <div class="login-container">
-            <div class="login-card glow-panel">
-                <div class="brand-badge">
-                    <span class="pulse-dot"></span> CRATER DETECTION SYSTEM
-                </div>
-                <h1>Lunar & Martian Surface<br>Analysis System</h1>
-                <p class="subtitle">AI-powered lunar & martian crater detection, surface analysis, and autonomous hazard evaluation workstation.</p>
-
-                <div class="login-actions">
-                    <button id="google-signin-btn" class="btn btn-primary google-btn">
-                        Sign in with Google (Personnel Auth)
-                    </button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ================= 2. UPLOAD STATE ================= -->
-    <section id="upload-view" class="view">
+    <!-- ================= 1. IMAGE UPLOAD STATE (Default Entry) ================= -->
+    <section id="upload-view" class="view active">
         <header class="top-nav">
             <div class="nav-brand">
                 <span class="badge">LLSDS-V2</span>
-                <h2>Lunar & Martian Surface Analysis System</h2>
+                <h2>Lunar Landing Site Detection System</h2>
             </div>
             <div class="user-profile">
-                <span id="user-display-email" class="mono">commander@lunar-ai.org</span>
-                <button id="logout-btn" class="btn btn-sm btn-outline">Logout</button>
+                <button id="view-history-btn-top" class="btn btn-sm btn-secondary">Mission History</button>
+                <span class="mono">AI Station: Active</span>
             </div>
         </header>
 
@@ -48,13 +28,13 @@
             <div class="upload-card glow-panel">
                 <div class="section-header">
                     <h3>Surface Image Ingestion</h3>
-                    <p>Upload high-resolution lunar or martian surface orbital or lander imagery for real-time YOLO11 hazard & crater analysis.</p>
+                    <p>Upload high-resolution lunar surface orbital or lander imagery for real-time YOLO11 hazard & crater analysis.</p>
                 </div>
 
                 <div id="drop-zone" class="drop-zone">
                     <div class="drop-zone-content" id="drop-zone-content">
                         <svg class="upload-icon" width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                        <p class="drop-title">Drag & drop lunar or martian imagery here</p>
+                        <p class="drop-title">Drag & drop lunar imagery here</p>
                         <p class="drop-sub">Supports PNG, JPG, JPEG, WEBP (Max 50MB)</p>
                         <button type="button" id="browse-btn" class="btn btn-secondary">Browse Files</button>
                         <input type="file" id="file-input" accept="image/png, image/jpeg, image/jpg, image/webp" hidden>
@@ -83,7 +63,7 @@
         </div>
     </section>
 
-    <!-- ================= 3. PROCESSING STATE ================= -->
+    <!-- ================= 2. PROCESSING STATE ================= -->
     <section id="processing-view" class="view">
         <div class="processing-container">
             <div class="radar-loader">
@@ -98,20 +78,28 @@
         </div>
     </section>
 
-    <!-- ================= 4. DASHBOARD STATE ================= -->
+    <!-- ================= 3. DASHBOARD STATE ================= -->
     <section id="dashboard-view" class="view">
         <header class="dashboard-header">
             <div class="nav-brand">
                 <span class="badge live-badge"><span class="pulse-dot"></span> LIVE MISSION</span>
-                <h2>Lunar & Martian Surface Analysis System</h2>
+                <h2>Lunar Landing Site Detection System</h2>
             </div>
             <div class="telemetry-pills">
                 <div class="pill"><span>ID:</span> <strong id="header-analysis-id" class="mono">-</strong></div>
                 <div class="pill"><span>PLANET:</span> <strong id="header-planet" class="mono">Moon</strong></div>
                 <div class="pill"><span>MODEL:</span> <strong id="header-model" class="mono">YOLO11</strong></div>
             </div>
-            <div class="user-profile">
-                <span id="dash-user-email" class="mono">commander@lunar-ai.org</span>
+            <div class="dashboard-header-actions">
+                <div class="dropdown">
+                    <button id="download-report-btn" class="btn btn-sm btn-secondary dropdown-toggle">Download Report ▾</button>
+                    <div id="download-menu" class="dropdown-menu hidden">
+                        <button type="button" data-format="pdf">Export as PDF</button>
+                        <button type="button" data-format="docx">Export as DOCX</button>
+                        <button type="button" data-format="pptx">Export as PPTX</button>
+                        <button type="button" data-format="json">Export as JSON</button>
+                    </div>
+                </div>
                 <button id="new-analysis-btn" class="btn btn-sm btn-primary">New Analysis</button>
             </div>
         </header>
@@ -127,12 +115,13 @@
                     <a href="#section-confidence" class="nav-item">Confidence Analysis</a>
                     <a href="#section-explainable" class="nav-item">AI Explanation</a>
                     <a href="#section-table" class="nav-item">Crater Catalog</a>
+                    <a href="#" id="sidebar-history-link" class="nav-item history-nav-item">📋 Public History</a>
                 </nav>
             </aside>
 
             <!-- Main Content Area -->
             <main class="dashboard-content">
-
+                
                 <!-- Overview KPIs -->
                 <section id="section-overview" class="dash-section">
                     <div class="section-title">
@@ -195,7 +184,7 @@
                     </div>
                     <div class="charts-grid">
                         <div class="chart-card glow-panel">
-                            <h4>Crater Diameter Distribution</h4>
+                            <h4>Crater Diameter Distribution (Histogram)</h4>
                             <div class="chart-container">
                                 <canvas id="diameter-canvas"></canvas>
                             </div>
@@ -306,12 +295,8 @@
                     <div class="table-card glow-panel">
                         <div class="table-responsive">
                             <table id="crater-table" class="data-table">
-                                <thead id="crater-table-head">
-                                    <!-- Dynamically generated headers -->
-                                </thead>
-                                <tbody id="crater-table-body">
-                                    <!-- Dynamically populated rows -->
-                                </tbody>
+                                <thead id="crater-table-head"></thead>
+                                <tbody id="crater-table-body"></tbody>
                             </table>
                         </div>
                         <div id="crater-table-empty" class="table-empty hidden">
@@ -321,6 +306,48 @@
                 </section>
 
             </main>
+        </div>
+    </section>
+
+    <!-- ================= 4. PUBLIC HISTORY STATE ================= -->
+    <section id="history-view" class="view">
+        <header class="top-nav">
+            <div class="nav-brand">
+                <span class="badge">MISSION ARCHIVE</span>
+                <h2>Public History of Lunar Analyses</h2>
+            </div>
+            <div class="user-profile">
+                <button id="back-to-upload-btn" class="btn btn-sm btn-primary">New Analysis</button>
+            </div>
+        </header>
+
+        <div class="history-container">
+            <div class="history-card glow-panel">
+                <div class="section-header">
+                    <h3>Completed Surface Analyses</h3>
+                    <p>Review all historical dashboard telemetry and crater logs processed in the current session.</p>
+                </div>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Analysis ID</th>
+                                <th>Date / Time</th>
+                                <th>Model</th>
+                                <th>Total Craters</th>
+                                <th>Hazard Level</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="history-empty" class="table-empty hidden">
+                    No historical analysis records found. Upload and analyze an image first.
+                </div>
+            </div>
         </div>
     </section>
 

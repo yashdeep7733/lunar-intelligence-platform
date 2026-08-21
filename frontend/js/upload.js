@@ -16,17 +16,14 @@ function initUploadModule() {
     const fileNameEl = document.getElementById("file-name");
     const fileDimensionsEl = document.getElementById("file-dimensions");
 
-    // Browse button trigger
     browseBtn.addEventListener("click", () => fileInput.click());
 
-    // File input change
     fileInput.addEventListener("change", (e) => {
         if (e.target.files.length > 0) {
             handleSelectedFile(e.target.files[0]);
         }
     });
 
-    // Drag and drop events
     ["dragenter", "dragover"].forEach(eventName => {
         dropZone.addEventListener(eventName, (e) => {
             e.preventDefault();
@@ -47,17 +44,14 @@ function initUploadModule() {
         }
     });
 
-    // Remove file option
     removeBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         resetUploadState();
     });
 
-    // Analyze action
     analyzeBtn.addEventListener("click", async () => {
         if (!selectedFile && !USE_MOCK_DATA) return;
-
-        // Transition to Processing State
+        
         switchViewState("processing-view");
         startProcessingAnimation();
 
@@ -66,7 +60,7 @@ function initUploadModule() {
             setTimeout(() => {
                 renderDashboard(data);
                 switchViewState("dashboard-view");
-            }, 800); // graceful delay for UI fidelity
+            }, 600);
         } catch (error) {
             alert("Analysis failed: " + error.message);
             switchViewState("upload-view");
@@ -86,8 +80,7 @@ function initUploadModule() {
         const reader = new FileReader();
         reader.onload = (e) => {
             imagePreview.src = e.target.result;
-
-            // Calculate dimensions
+            
             const img = new Image();
             img.onload = () => {
                 fileDimensionsEl.textContent = `Dimensions: ${img.width} × ${img.height} px`;

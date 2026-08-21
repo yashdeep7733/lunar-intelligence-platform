@@ -1,18 +1,18 @@
 // ========================================
 // BACKEND API CONFIGURATION & DATA LAYER
-// Replace these values when connecting
-// the existing backend.
 // ========================================
 const API_CONFIG = {
-    baseURL: "http://192.168.31.253:6600", // e.g. "https://api.lunar-landing.org"
+    baseURL: "", // e.g. "https://api.lunar-landing.org"
     endpoints: {
-        login: "/api/auth/login",
         analyze: "/api/analyze"
     }
 };
 
 // Toggle mock mode for frontend development/demo purposes
 const USE_MOCK_DATA = true;
+
+// Public History Store
+let analysisHistory = [];
 
 // ========================================
 // MOCK DATA (Matches JSON Contract)
@@ -24,7 +24,7 @@ const MOCK_ANALYSIS_DATA = {
         planet: "Moon",
         model: "YOLO11-Lunar-v3.2",
         processing_time: "1.42 sec",
-        analysis_date: "2026-08-19T14:32:00Z"
+        analysis_date: "2026-08-20T14:32:00Z"
     },
     image_resolution: {
         width: 1920,
@@ -39,7 +39,7 @@ const MOCK_ANALYSIS_DATA = {
         { id: "CR-006", x_center: 630, y_center: 900, diameter_px: 38, confidence: 0.91, size_class: "small", hazard_rating: "Low" }
     ],
     images: {
-        annotated: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080' viewBox='0 0 1920 1080'><rect width='100%' height='100%' fill='%230b1329'/><circle cx='450' cy='320' r='71' fill='none' stroke='%2338bdf8' stroke-width='4'/><text x='450' y='235' fill='%2338bdf8' font-size='20' font-family='monospace' text-anchor='middle'>CR-001 (142px)</text><circle cx='820' cy='510' r='42' fill='none' stroke='%23f59e0b' stroke-width='4'/><text x='820' y='455' fill='%23f59e0b' font-size='20' font-family='monospace' text-anchor='middle'>CR-002 (85px)</text><circle cx='1250' cy='210' r='55' fill='none' stroke='%23ef4444' stroke-width='4'/><text x='1250' y='145' fill='%23ef4444' font-size='20' font-family='monospace' text-anchor='middle'>CR-003 (110px)</text><text x='960' y='540' fill='%2394a3b8' font-size='32' font-family='sans-serif' text-anchor='middle' opacity='0.5'>[ SIMULATED YOLO11 ANNOTATED LUNAR SURFACE ]</text></svg>"
+        annotated: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080' viewBox='0 0 1920 1080'><rect width='100%' height='100%' fill='%230b1329'/><circle cx='450' cy='320' r='71' fill='none' stroke='%2338bdf8' stroke-width='4'/><text x='450' y='235' fill='%2338bdf8' font-size='20' font-family='monospace' text-anchor='middle'>CR-001 (142px)</text><circle cx='820' cy='510' r='42' fill='none' stroke='%23f59e0b' stroke-width='4'/><text x='820' y='455' fill='%23f59e0b' font-size='20' font-family='monospace' text-anchor='middle'>CR-002 (85px)</text><circle cx='1250' cy='210' r='55' fill='none' stroke='%23ef4444' stroke-width='4'/><text x='1250' y='145' fill='%23ef4444' font-size='20' font-family='monospace' text-anchor='middle'>CR-003 (110px)</text><text x='960' y='540' fill='%2394a3b8' font-size='32' font-family='sans-serif' text-anchor='middle' opacity='0.5'>[ YOLO11 ANNOTATED LUNAR SURFACE ]</text></svg>"
     },
     chart_data: {
         diameters: [38, 45, 62, 85, 110, 142]
@@ -76,60 +76,47 @@ const MOCK_ANALYSIS_DATA = {
 // ========================================
 
 /**
- * Handles Google/Gmail Authentication UI interaction.
- */
-async function signInWithGoogle() {
-    if (USE_MOCK_DATA) {
-        // Simulate authentication delay
-        await new Promise(resolve => setTimeout(resolve, 600));
-        return { success: true, user: { email: "commander@lunar-ai.org", name: "Mission Commander" } };
-    }
-
-    try {
-        const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.login}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" }
-        });
-        return await response.json();
-    } catch (error) {
-        console.error("Login API Error:", error);
-        throw error;
-    }
-}
-
-/**
  * Sends the selected image file to backend for analysis.
- * @param {File} file
+ * @param {File} file 
  */
 async function analyzeImage(file) {
+    let resultData;
     if (USE_MOCK_DATA) {
-        // Simulate processing network delay
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        // If file provided, update metadata dynamically in mock object for realism
+        await new Promise(resolve => setTimeout(resolve, 1800));
+        
+        // Clone mock data with unique ID & timestamp for history testing
+        resultData = JSON.parse(JSON.stringify(MOCK_ANALYSIS_DATA));
+        resultData.analysis_id = "LLSDS-ANALYZE-" + Math.floor(10000 + Math.random() * 90000);
+        resultData.processing_info.analysis_date = new Date().toISOString();
+        
+        // If file provided, create object URL preview if possible
         if (file) {
-            MOCK_ANALYSIS_DATA.analysis_id = "LLSDS-ANALYZE-" + Math.floor(10000 + Math.random() * 90000);
-            MOCK_ANALYSIS_DATA.processing_info.analysis_date = new Date().toISOString();
+            const objectUrl = URL.createObjectURL(file);
+            // Optionally substitute annotated image preview if user uploaded custom image
+            // Keep SVG mock if none
         }
-        return MOCK_ANALYSIS_DATA;
+    } else {
+        try {
+            const formData = new FormData();
+            formData.append("image", file);
+
+            const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.analyze}`, {
+                method: "POST",
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server returned status ${response.status}`);
+            }
+
+            resultData = await response.json();
+        } catch (error) {
+            console.error("Analysis API Error:", error);
+            throw error;
+        }
     }
 
-    try {
-        const formData = new FormData();
-        formData.append("image", file);
-
-        const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.analyze}`, {
-            method: "POST",
-            body: formData
-        });
-
-        if (!response.ok) {
-            throw new Error(`Server returned status ${response.status}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error("Analysis API Error:", error);
-        throw error;
-    }
+    // Push to public history store
+    analysisHistory.unshift(resultData);
+    return resultData;
 }

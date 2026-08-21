@@ -1,16 +1,16 @@
 // ========================================
-// DASHBOARD RENDERING & MAPPING MODULE
+// DASHBOARD RENDERING & REPORT EXPORT
 // ========================================
 
-/**
- * Main dashboard rendering entry point matching the JSON contract.
- * @param {Object} data
- */
+let currentDashboardData = null;
+
 function renderDashboard(data) {
     if (!data || !data.success) {
         console.error("Invalid dashboard data contract response");
         return;
     }
+
+    currentDashboardData = data;
 
     // 1. Header Telemetry
     document.getElementById("header-analysis-id").textContent = data.analysis_id;
@@ -25,12 +25,15 @@ function renderDashboard(data) {
     document.getElementById("kpi-avg-crater").textContent = stats.average_crater_px ?? 0;
     document.getElementById("kpi-median-crater").textContent = stats.median_crater_px ?? 0;
 
-    // 3. AI Annotated Image
+    // 3. AI Annotated Image (Robust Rendering Fix)
     const annotatedImg = document.getElementById("annotated-image-output");
     if (data.images && data.images.annotated) {
-        // Handle raw base64 or SVG data uri correctly
-        const base64Str = data.images.annotated;
-        annotatedImg.src = base64Str.startsWith("data:") ? base64Str : `data:image/png;base64,${base64Str}`;
+        const imgVal = data.images.annotated;
+        if (imgVal.startsWith("data:") || imgVal.startsWith("http")) {
+            annotatedImg.src = imgVal;
+        } else {
+            annotatedImg.src = `data:image/png;base64,${imgVal}`;
+        }
     }
 
     const res = data.image_resolution || {};
@@ -40,8 +43,7 @@ function renderDashboard(data) {
     // 4. Hazard Assessment Gauge
     const hazard = data.hazard || { score: 0, level: "Safe" };
     document.getElementById("hazard-score-val").textContent = hazard.score;
-
-    // Animate radial gauge circumference (314 is full circumference for r=50)
+    
     const gaugeCircle = document.getElementById("gauge-progress-circle");
     const strokeOffset = 314 - (314 * hazard.score) / 100;
     gaugeCircle.style.strokeDashoffset = strokeOffset;
@@ -62,9 +64,9 @@ function renderDashboard(data) {
     document.getElementById("conf-low").textContent = `${Math.round((conf.lowest || 0) * 100)}%`;
 
     // 6. Explainable AI Summary
-    const xaiSummary = data.explainable_ai && data.explainable_ai.summary
-    ? data.explainable_ai.summary
-    : "No AI explanation available for this run.";
+    const xaiSummary = data.explainable_ai && data.explainable_ai.summary 
+        ? data.explainable_ai.summary 
+        : "No AI explanation available for this run.";
     document.getElementById("xai-summary-text").textContent = xaiSummary;
 
     // 7. Processing Information Panel
@@ -79,14 +81,10 @@ function renderDashboard(data) {
     // 8. Dynamic Crater Table
     renderCraterTable(data.craters || []);
 
-    // 9. Render Charts
+    // 9. Render Charts (Histogram & Donut & Confidence)
     renderCharts(data);
 }
 
-/**
- * Dynamically inspects crater keys and renders a robust table.
- * @param {Array} craters
- */
 function renderCraterTable(craters) {
     const thead = document.getElementById("crater-table-head");
     const tbody = document.getElementById("crater-table-body");
@@ -103,15 +101,69 @@ function renderCraterTable(craters) {
     }
 
     emptyState.classList.add("hidden");
-
-    // Extract keys dynamically
     const keys = Object.keys(craters[0]);
 
-    // Build headers cleanly (convert snake_case to Title Case)
     thead.innerHTML = `<tr>${keys.map(k => `<th>${k.replace(/_/g, ' ')}</th>`).join('')}</tr>`;
-
-    // Build rows
     tbody.innerHTML = craters.map(crater => {
         return `<tr>${keys.map(k => `<td>${crater[k] !== undefined ? crater[k] : '-'}</td>`).join('')}</tr>`;
     }).join('');
+}
+
+// ========================================
+// REPORT DOWNLOAD EXPORT FUNCTIONS
+// ========================================
+
+function exportReport(format) {
+    if (!currentDashboardData) {
+        alert("No active dashboard report available to download.");
+        return;
+    }
+
+    const reportId = currentDashboardData.analysis_id;
+    let fileContent = "";
+    let mimeType = "";
+    let extension = format;
+
+    if (format === 'json') {
+        fileContent = JSON.stringify(currentDashboardData, null, 2);
+        mimeType = "application/json";
+    } else {
+        // Formats: pdf, docx, pptx formatted textual simulation for download blob
+        fileContent = `==================================================\n` +
+                      ` LUNAR LANDING SITE DETECTION SYSTEM REPORT\n` +
+                      ` Format: ${format.toUpperCase()} | ID: ${reportId}\n` +
+                      `==================================================\n\n` +
+                      `1. PROCESSING TELEMETRY\n` +
+                      ` - Planet: ${currentDashboardData.processing_info.planet}\n` +
+                      ` - Model: ${currentDashboardData.processing_info.model}\n` +
+                      ` - Processing Time: ${currentDashboardData.processing_info.processing_time}\n` +
+                      ` - Analysis Date: ${currentDashboardData.processing_info.analysis_date}\n` +
+                      ` - Resolution: ${currentDashboardData.image_resolution.width}x${currentDashboardData.image_resolution.height}\n\n` +
+                      `2. MISSION STATISTICS\n` +
+                      ` - Total Craters: ${currentDashboardData.statistics.total_craters}\n` +
+                      ` - Largest Crater: ${currentDashboardData.statistics.largest_crater_px} px\n` +
+                      ` - Smallest Crater: ${currentDashboardData.statistics.smallest_crater_px} px\n` +
+                      ` - Average Crater: ${currentDashboardData.statistics.average_crater_px} px\n` +
+                      ` - Median Crater: ${currentDashboardData.statistics.median_crater_px} px\n\n` +
+                      `3. HAZARD ASSESSMENT\n` +
+                      ` - Hazard Score: ${currentDashboardData.hazard.score}/100\n` +
+                      ` - Hazard Level: ${currentDashboardData.hazard.level}\n\n` +
+                      `4. EXPLAINABLE AI SUMMARY\n` +
+                      ` ${currentDashboardData.explainable_ai.summary}\n\n` +
+                      `==================================================\n` +
+                      ` End of Report - LLSDS Autonomous Workstation\n` +
+                      `==================================================\n`;
+        
+        mimeType = format === 'pdf' ? "application/pdf" : (format === 'docx' ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+    }
+
+    const blob = new Blob([fileContent], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Lunar_Analysis_Report_${reportId}.${extension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
