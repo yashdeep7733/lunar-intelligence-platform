@@ -2,14 +2,14 @@
 // BACKEND API CONFIGURATION & DATA LAYER
 // ========================================
 const API_CONFIG = {
-    baseURL: "", // e.g. "https://api.lunar-landing.org"
+    baseURL: "http://192.168.31.253:6600", // e.g. "https://api.lunar-landing.org"
     endpoints: {
-        analyze: "/api/analyze"
+        analyze: "/detect"
     }
 };
 
 // Toggle mock mode for frontend development/demo purposes
-const USE_MOCK_DATA = true;
+const USE_MOCK_DATA = false;
 
 // Public History Store
 let analysisHistory = [];
